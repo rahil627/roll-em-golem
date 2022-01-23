@@ -2,7 +2,7 @@
 http://archive-server.globalgamejam.org/2012/rollem-golem
 
 # from the ggj site:
-ort Introduction:  Roll'em Golem is a challenging puzzle game. You must collect three pieces of a medallion in order to complete a stage. You will
+Short Introduction:  Roll'em Golem is a challenging puzzle game. You must collect three pieces of a medallion in order to complete a stage. You will
 Platform/System:  Web standard (Html5, Java, JavaScript, Flash)
 Platform note:  Flash Player 11.1 or higher
 Brief Play Description: 
