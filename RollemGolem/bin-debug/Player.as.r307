@@ -1,0 +1,203 @@
+package  
+{
+	import flash.events.Event;
+	import org.flixel.*;
+	import events.*;
+	import states.state_game;
+	import terrain.*;
+	import flash.utils.*;
+	
+	public class Player extends FlxSprite
+	{
+		// Origin position
+		private var default_pos:FlxPoint = new FlxPoint();
+		private var timer:FlxTimer = new FlxTimer();
+		
+		// Player variables
+		private var player_speed:int = 100;
+		private var player_jump:int = 420;
+		public var inAir:Boolean = false;
+		public var isDashing:Boolean = false;
+		public var shouldRespawn:Boolean = false;
+		public var shouldSwap:Boolean = false;
+		private var bCanRespawn:Boolean = true;
+		
+		[Embed(source = "../assets/tileset.png")] private const NewGraphic:Class;
+		
+		[Embed(source='../assets/character.png')] private const characterFile:Class
+		
+		public function Player(x:int, y:int) 
+		{	
+			// Parent call
+			super(x, y);
+			this.default_pos.x = x;
+			this.default_pos.y = y;
+			//this.makeGraphic(20, 20, 0xffffffff);
+			this.loadGraphic(characterFile, true, false, 26, 26);
+			
+			//76-53
+			var framesArray:Array = new Array();
+			var frames:int = 76;
+			for(var i:int = 0; i >= 23; i++) {
+				framesArray[i] = frames;
+				frames--;
+			}
+			
+			this.addAnimation("idle", framesArray);
+			
+			//52-15
+			framesArray = new Array();
+			frames = 52;
+			for(var i:int = 0; i >= 37; i++) {
+				framesArray[i] = frames;
+				frames--;
+			}
+			this.addAnimation("walk", framesArray, 8, true);
+			this.addAnimation("jump", [12, 11, 10, 9, 8, 7, 6, 5, 4]);
+			this.addAnimation("fall", [3, 2, 1, 0]);
+			this.addAnimation("dash", [88, 87, 86, 85, 84, 83, 82, 81, 80, 79, 77]);
+			
+			this.play("idle");
+			
+			//this.drag.x = player_speed * 10;
+			
+			// Velocity
+			this.maxVelocity.x = 100;
+			this.maxVelocity.y = 1000;
+			
+			// Drag
+			this.drag.x = this.maxVelocity.x * 4;
+			this.drag.y = this.maxVelocity.y * 4;
+			this.acceleration.x = 0;
+			this.acceleration.y = Common.GRAVITY;
+			this.solid = true;
+		}
+
+		// Update ourselves
+		override public function update():void
+		{	
+			// Is player moving up or down?
+			if ( this.velocity.y != 0 ) {
+				this.inAir = true;
+			}
+			
+			if (this.velocity.y != 0)
+			{
+				this.inAir = true;
+			}
+			
+			// Controls
+			if (FlxG.keys.justPressed("W") && this.velocity.y == 0) {
+				this.velocity.y = -player_jump;
+				this.play("jump");
+				
+			}
+			/*if(FlxG.keys.pressed("A")) {
+				this.velocity.x = -this.maxVelocity.x;
+				this.facing = LEFT;
+			}*/
+			if(FlxG.keys.pressed("D")) {
+				this.velocity.x = this.maxVelocity.x;
+				//this.acceleration.x += 10000 * FlxG.elapsed;
+				this.facing = RIGHT;
+			}
+			
+			if (FlxG.keys.justPressed("I")) {
+				this.loadGraphic(NewGraphic);
+			}
+			
+			// Dash logic
+			if (FlxG.keys.justPressed("SPACE") && !isDashing && this.velocity.y == 0) {
+				isDashing = true;
+				setTimeout(noDashing, 100);
+				this.maxVelocity.x = 250;
+				this.velocity.x = 250;
+				this.play("dash");
+			}
+			
+			// Jumped offscreen
+			if (this.x > Common.WINDOW_WIDTH || this.y > Common.WINDOW_HEIGHT) {
+				respawn();
+				EventManager.dispatchEventByName("world_iteration");
+			}
+			
+			if (FlxG.keys.pressed("R") && bCanRespawn)
+			{
+				respawn();
+				bCanRespawn = false;
+				
+			}
+			
+			if (FlxG.keys.justReleased("R"))
+			{
+				bCanRespawn = true;
+			}
+			
+			
+			if (FlxG.keys.pressed("L"))
+			{
+				(FlxG.state as state_game).ReloadLevel();// .SwapTileswithMirror();						
+			}
+			super.update();
+		}
+		public function noDashing():void {
+			this.maxVelocity.x = 100;
+			isDashing = false;
+		}
+		
+		public function respawn(bSwapTiles:Boolean = true):void {
+			shouldSwap = bSwapTiles;
+			shouldRespawn = true;
+			//this.x = default_pos.x;
+			//this.y = default_pos.y;
+			
+			//(FlxG.state as state_game).manager.SwapTileswithMirror();
+		}
+		
+		override public function preUpdate():void 
+		{
+			if(shouldRespawn) {
+				this.x = default_pos.x;
+				this.y = default_pos.y;
+				if (shouldSwap)
+				{
+					(FlxG.state as state_game).manager.SwapTileswithMirror();
+				}
+				
+				shouldRespawn = false;
+			}
+			super.preUpdate();
+		}
+		
+		/**
+		 * Determines whether or not the FrogHero is jumping on the target.
+		 * 
+		 * @param	target		The enemy object which the hero might be jumping on
+		 * @return	A boolean, true if the hero is above the the target
+		 */
+		public function IsJumpingOn(target:FlxSprite): Boolean
+		{
+				var this_bottom:Number = this.y - (this.height * 0.5);
+				var target_height:Number = target.y + (target.height*0.5);
+				if (this_bottom < target_height)
+				{
+					return true;
+				}
+			return false;
+		}
+		
+		public function HandleCollision(myself:FlxSprite, target:FlxSprite):void
+		{
+			if (IsJumpingOn(target)) {
+				target.health -= 1;
+			}
+			else {
+				this.health -= 1;
+			}
+		}
+
+
+
+	}
+
+}
